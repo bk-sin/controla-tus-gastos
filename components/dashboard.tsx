@@ -17,20 +17,26 @@ import { useEffect, useState } from "react";
 
 import type { Database } from "@/lib/database.types";
 import { useUser } from "@/lib/hooks/use-user";
+import { expenseCategoryService } from "@/lib/services/category-service";
+import { creditCardService } from "@/lib/services/credit-card-service";
 import { expenseService } from "@/lib/services/expense-service";
+import { useAtom } from "jotai";
 import Link from "next/link";
 import CreditCardTable from "./credit-card-table";
 import ExpenseForm from "./expense-form";
 import ExpenseTable from "./expense-table";
 import FinancialSummary from "./financial-summary";
 import FixedExpensesTable from "./fixed-expenses-table";
+import { cardsAtom } from "./settings/settings-page";
 
 export type Expense = {
   id: string;
   description: string;
   amount: number;
-  category: string;
-  date: string;
+  categoryId?: string;
+  date?: string;
+  isFixed: boolean;
+  category?: ExpenseCategory;
 };
 
 export type CreditCardPayment = {
@@ -40,7 +46,7 @@ export type CreditCardPayment = {
   card: string;
   currentInstallment: number;
   totalInstallments: number;
-  date: string;
+  date?: string;
 };
 
 export type CreditCard = {
@@ -54,22 +60,13 @@ export type CreditCard = {
   userId: string;
 };
 
-export type FixedExpense = {
-  id: string;
-  description: string;
-  amount: number;
-  type: string;
-  date: string;
-  isFixed: boolean;
-  category: ExpenseCategory;
-};
-
 export type ExpenseCategory = {
   id: string;
   name: string;
   isFixed: boolean;
   value: string;
   color: string;
+  userId: string;
 };
 
 export default function Dashboard() {
@@ -85,11 +82,13 @@ export default function Dashboard() {
   const [creditCardPayments, setCreditCardPayments] = useState<
     CreditCardPayment[]
   >([]);
-  const [fixedExpenses, setFixedExpenses] = useState<FixedExpense[]>([]);
+  const [fixedExpenses, setFixedExpenses] = useState<Expense[]>([]);
   const [loading, setLoading] = useState(true);
   const { user } = useUser();
   const router = useRouter();
   const supabase = createClientComponentClient<Database>();
+
+  const [cards, setCards] = useAtom(cardsAtom);
 
   // Cargar datos desde Supabase
   useEffect(() => {
@@ -103,12 +102,13 @@ export default function Dashboard() {
         setIncome(userIncome);
 
         // Cargar tipo de gastos del usuario
-        const expenseCategories = await expenseService.getExpenseCategories();
+        const expenseCategories =
+          await expenseCategoryService.getExpenseCategoryList();
         setExpenseCategories(expenseCategories);
 
         // Cargar tipo de gastos fijos del usuario
         const fixedExpenseCategoryList =
-          await expenseService.getFixedExpenseCategories();
+          await expenseCategoryService.getExpenseCategoryList(true);
         setFixedExpenseCategories(fixedExpenseCategoryList);
 
         // Cargar gastos variables
@@ -121,8 +121,12 @@ export default function Dashboard() {
         setCreditCardPayments(userCreditCardPayments);
 
         // Cargar gastos fijos
-        const userFixedExpenses = await expenseService.getFixedExpenses();
+        const userFixedExpenses = await expenseService.getExpenses(true);
         setFixedExpenses(userFixedExpenses);
+
+        // Cargar tarjetas de credito
+        const userCreditCards = await creditCardService.getCreditCardList();
+        setCards(userCreditCards);
       } catch (error) {
         console.error("Error loading data:", error);
       } finally {
@@ -131,7 +135,7 @@ export default function Dashboard() {
     };
 
     loadData();
-  }, [user]);
+  }, [user?.id]);
 
   // Calculate totals
   const totalExpenses = expenses.reduce(
@@ -159,21 +163,16 @@ export default function Dashboard() {
 
   // Handle adding a new expense
   const handleAddExpense = async (expense: Omit<Expense, "id" | "date">) => {
-    const newExpense = await expenseService.addExpense(expense);
-    if (newExpense) {
-      setExpenses([newExpense, ...expenses]);
-    }
-  };
-
-  // Handle editing an expense
-  const handleEditExpense = async (updatedExpense: Expense) => {
-    const success = await expenseService.updateExpense(updatedExpense);
-    if (success) {
-      setExpenses(
-        expenses.map((expense) =>
-          expense.id === updatedExpense.id ? updatedExpense : expense
-        )
-      );
+    try {
+      const newExpense = await expenseService.addExpense(expense);
+      if (newExpense) {
+        setExpenses([
+          { ...newExpense, description: newExpense?.description || "" },
+          ...expenses,
+        ]);
+      }
+    } catch (error) {
+      console.error("Error saving expense:", error);
     }
   };
 
@@ -223,26 +222,39 @@ export default function Dashboard() {
 
   // Handle adding a new fixed expense
   const handleAddFixedExpense = async (
-    expense: Omit<FixedExpense, "id" | "date">
+    expense: Omit<Expense, "id" | "date">
   ) => {
-    const newExpense = await expenseService.addFixedExpense(expense);
+    const newExpense = await expenseService.addExpense(expense);
     if (newExpense) {
-      setFixedExpenses([newExpense, ...fixedExpenses]);
+      setFixedExpenses([
+        { ...newExpense, description: newExpense?.description || "" },
+        ...fixedExpenses,
+      ]);
     }
   };
 
   // Handle editing a fixed expense
-  const handleEditFixedExpense = async (updatedExpense: FixedExpense) => {
-    const success = await expenseService.updateFixedExpense(updatedExpense);
-    if (success) {
-      setFixedExpenses(
-        fixedExpenses.map((expense) =>
-          expense.id === updatedExpense.id ? updatedExpense : expense
-        )
-      );
+  const handleEditExpense = async (expense: Expense) => {
+    try {
+      const updatedExpense = (await expenseService.updateExpense(
+        expense
+      )) as Expense;
+
+      updatedExpense.isFixed
+        ? setFixedExpenses((prev) =>
+            prev.map((prevExp) =>
+              prevExp.id === updatedExpense?.id ? updatedExpense : prevExp
+            )
+          )
+        : setExpenses((prev) =>
+            prev.map((prevExp) =>
+              prevExp.id === updatedExpense?.id ? updatedExpense : prevExp
+            )
+          );
+    } catch (error) {
+      console.error("Error updating fixed expense:", error);
     }
   };
-
   // Handle deleting a fixed expense
   const handleDeleteFixedExpense = async (id: string) => {
     const success = await expenseService.deleteExpense(id);
@@ -403,6 +415,7 @@ export default function Dashboard() {
 
         <TabsContent value="resumen" className="space-y-4">
           <FinancialSummary
+            categories={[...expenseCategories, ...fixedExpenseCategories]}
             expenses={expenses}
             creditCardPayments={creditCardPayments}
             fixedExpenses={fixedExpenses}
@@ -412,10 +425,13 @@ export default function Dashboard() {
 
         <TabsContent value="gastos" className="space-y-4">
           <ExpenseForm
-            onAddExpense={handleAddExpense}
+            onAddExpense={(expense) =>
+              handleAddExpense(expense as Omit<Expense, "id" | "date">)
+            }
             categories={expenseCategories}
           />
           <ExpenseTable
+            categories={expenseCategories}
             expenses={expenses}
             onEditExpense={handleEditExpense}
             onDeleteExpense={handleDeleteExpense}
@@ -423,7 +439,15 @@ export default function Dashboard() {
         </TabsContent>
 
         <TabsContent value="tarjetas" className="space-y-4">
-          <ExpenseForm onAddExpense={handleAddCreditCardPayment} isCredit />
+          <ExpenseForm
+            onAddExpense={async (expense) => {
+              await handleAddCreditCardPayment(
+                expense as Omit<CreditCardPayment, "id" | "date">
+              );
+            }}
+            isCredit
+            creditCards={cards}
+          />
           <CreditCardTable
             payments={creditCardPayments}
             onEditPayment={handleEditCreditCardPayment}
@@ -433,14 +457,16 @@ export default function Dashboard() {
 
         <TabsContent value="fijos" className="space-y-4">
           <ExpenseForm
-            onAddExpense={handleAddFixedExpense}
+            onAddExpense={(expense) =>
+              handleAddFixedExpense(expense as Omit<Expense, "id" | "date">)
+            }
             fixedCategories={fixedExpenseCategories}
             isFixed
           />
           <FixedExpensesTable
-            expenses={fixedExpenses}
+            fixedExpenses={fixedExpenses}
             fixedCategories={fixedExpenseCategories}
-            onEditExpense={handleEditFixedExpense}
+            onEditExpense={handleEditExpense}
             onDeleteExpense={handleDeleteFixedExpense}
           />
         </TabsContent>

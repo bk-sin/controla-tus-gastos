@@ -9,16 +9,18 @@ import { useEffect, useState } from "react";
 import type { CreditCard, ExpenseCategory } from "../dashboard";
 
 import { useUser } from "@/lib/hooks/use-user";
+import { expenseCategoryService } from "@/lib/services/category-service";
 import { creditCardService } from "@/lib/services/credit-card-service";
 import { userSettingsService } from "@/lib/services/user-settings-service";
 import { DBCurrency, DbUserSettings } from "@/lib/supabase";
-import { CategoriesTab } from "./category-tab";
-import { CreditCardTab } from "./credit-card-tab";
-import { Profile, ProfileTab } from "./profile-tab";
+import { CategoriesTab } from "./category/category-tab";
+import { CreditCardTab } from "./credit-card/credit-card-tab";
+import { Profile, ProfileTab } from "./profile/profile-tab";
 import { Toast } from "./toast";
 
 export const settingsAtom = atom("profile");
 export const cardsAtom = atom<CreditCard[]>([]);
+export const categoriesAtom = atom<ExpenseCategory[]>([]);
 
 export const SettingsPage = ({
   profile,
@@ -33,22 +35,62 @@ export const SettingsPage = ({
 }) => {
   const [activeTab, setActiveTab] = useAtom(settingsAtom);
   const [localCards, setLocalCards] = useAtom(cardsAtom);
+  const [localCategories, setLocalCategories] = useAtom(categoriesAtom);
   const [toast, setToast] = useState<{
     message: string;
     type: "success" | "error";
   } | null>(null);
   useEffect(() => {
     setLocalCards(cards);
+    setLocalCategories(categories);
   }, [cards]);
 
-  const handleCategorySave = async (expense: ExpenseCategory) => {
+  const handleCreateCategory = async (
+    expenseCategory: Omit<ExpenseCategory, "id">
+  ) => {
     try {
+      const newCategory = await expenseCategoryService.addExpenseCategory(
+        expenseCategory
+      );
+      setLocalCategories((prev) => [...prev, { ...newCategory }]);
       setToast({
-        message: expense?.id ? "Categoría actualizada" : "Categoría agregada",
+        message: "Categoría agregada",
         type: "success",
       });
     } catch (error) {
       setToast({ message: "Error al guardar", type: "error" });
+    }
+  };
+
+  const handleUpdateCategory = async (expenseCategory: ExpenseCategory) => {
+    try {
+      const updatedCategory =
+        await expenseCategoryService.updateExpenseCategory(expenseCategory);
+      setLocalCategories((prev) =>
+        prev.map((category) =>
+          category.id === expenseCategory.id
+            ? { ...category, ...updatedCategory }
+            : category
+        )
+      );
+      setToast({
+        message: "Categoría actualizada",
+        type: "success",
+      });
+    } catch (error) {
+      setToast({ message: "Error al guardar", type: "error" });
+    }
+  };
+
+  const handleCategoryDelete = async (id: string) => {
+    try {
+      await expenseCategoryService.deleteExpenseCategory(id);
+      setLocalCategories((prev) =>
+        prev.filter((category) => category.id !== id)
+      );
+      setToast({ message: "Categoría eliminada", type: "success" });
+    } catch (error) {
+      setToast({ message: "Error al eliminar", type: "error" });
     }
   };
 
@@ -91,14 +133,6 @@ export const SettingsPage = ({
       console.error(error);
       setToast({ message: "Error al guardar", type: "error" });
       throw error;
-    }
-  };
-
-  const handleCategoryDelete = async (id: string) => {
-    try {
-      setToast({ message: "Categoría eliminada", type: "success" });
-    } catch (error) {
-      setToast({ message: "Error al eliminar", type: "error" });
     }
   };
 
@@ -175,8 +209,9 @@ export const SettingsPage = ({
         </TabsContent>
         <TabsContent value="categories">
           <CategoriesTab
-            categories={categories}
-            onSave={handleCategorySave}
+            categories={localCategories}
+            onCreate={handleCreateCategory}
+            onUpdate={handleUpdateCategory}
             onDelete={handleCategoryDelete}
           />
         </TabsContent>

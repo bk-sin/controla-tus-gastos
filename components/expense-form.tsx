@@ -21,12 +21,13 @@ import type {
   CreditCardPayment,
   Expense,
   ExpenseCategory,
-  FixedExpense,
 } from "./dashboard";
 import { settingsAtom } from "./settings/settings-page";
 
 interface ExpenseFormProps {
-  onAddExpense: (expense: any) => void;
+  onAddExpense: (
+    expense: Omit<CreditCardPayment | Expense, "id" | "date">
+  ) => void;
   isCredit?: boolean;
   isFixed?: boolean;
   categories?: ExpenseCategory[];
@@ -44,11 +45,10 @@ export default function ExpenseForm({
 }: ExpenseFormProps) {
   const [description, setDescription] = useState("");
   const [amount, setAmount] = useState("");
-  const [category, setCategory] = useState("");
   const [card, setCard] = useState("");
   const [currentInstallment, setCurrentInstallment] = useState("");
   const [totalInstallments, setTotalInstallments] = useState("");
-  const [type, setType] = useState("");
+  const [categoryId, setCategoryId] = useState("");
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -65,13 +65,12 @@ export default function ExpenseForm({
         card,
         currentInstallment: Number.parseInt(currentInstallment) || 1,
         totalInstallments: Number.parseInt(totalInstallments) || 1,
-        date: new Date().toISOString(),
       };
       onAddExpense(payment);
     } else if (isFixed) {
-      const fixedExpense: Omit<FixedExpense, "id" | "date" | "category"> = {
+      const fixedExpense: Omit<Expense, "id" | "date" | "category"> = {
         amount: Number.parseFloat(amount),
-        type,
+        categoryId,
         description,
         isFixed: true,
       };
@@ -80,20 +79,17 @@ export default function ExpenseForm({
       const expense: Omit<Expense, "id"> = {
         description,
         amount: Number.parseFloat(amount),
-        category,
-        date: new Date().toISOString(),
+        categoryId,
+        isFixed: false,
       };
       onAddExpense(expense);
     }
-
-    // Reset form
     setDescription("");
     setAmount("");
-    setCategory("");
     setCard("");
     setCurrentInstallment("");
     setTotalInstallments("");
-    setType("");
+    setCategoryId("");
   };
   const [_, setSettingsTab] = useAtom(settingsAtom);
   const handleCategoryChange = (value: string) => {
@@ -101,7 +97,16 @@ export default function ExpenseForm({
       setSettingsTab("categories");
       redirect("/settings");
     } else {
-      setCategory(value);
+      setCategoryId(value);
+    }
+  };
+
+  const handleCreditCardChange = (value: string) => {
+    if (value === "settings") {
+      setSettingsTab("cards");
+      redirect("/settings");
+    } else {
+      setCard(value);
     }
   };
   return (
@@ -129,7 +134,7 @@ export default function ExpenseForm({
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="amount">Monto</Label>
+              <Label htmlFor="amount">Monto{isCredit && " de la cuota"}</Label>
               <Input
                 id="amount"
                 type="number"
@@ -148,7 +153,11 @@ export default function ExpenseForm({
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                 <div className="space-y-2">
                   <Label htmlFor="card">Tarjeta</Label>
-                  <Select value={card} onValueChange={setCard}>
+                  <Select
+                    value={card}
+                    onValueChange={handleCreditCardChange}
+                    required
+                  >
                     <SelectTrigger id="card">
                       <SelectValue placeholder="Seleccionar tarjeta" />
                     </SelectTrigger>
@@ -158,6 +167,14 @@ export default function ExpenseForm({
                           {creditCard.name}
                         </SelectItem>
                       ))}
+                      {!creditCards?.length && (
+                        <SelectItem
+                          value={"settings"}
+                          className="cursor-pointer"
+                        >
+                          Agregar tarjeta de crédito
+                        </SelectItem>
+                      )}
                     </SelectContent>
                   </Select>
                 </div>
@@ -188,7 +205,7 @@ export default function ExpenseForm({
           ) : isFixed ? (
             <div className="space-y-2">
               <Label htmlFor="type">Tipo de Gasto Fijo</Label>
-              <Select value={type} onValueChange={setType}>
+              <Select value={categoryId} onValueChange={setCategoryId}>
                 <SelectTrigger id="type">
                   <SelectValue placeholder="Seleccionar tipo" />
                 </SelectTrigger>
@@ -204,7 +221,7 @@ export default function ExpenseForm({
           ) : (
             <div className="space-y-2">
               <Label htmlFor="category">Categoría</Label>
-              <Select value={category} onValueChange={handleCategoryChange}>
+              <Select value={categoryId} onValueChange={handleCategoryChange}>
                 <SelectTrigger id="category">
                   <SelectValue placeholder="Seleccionar categoría" />
                 </SelectTrigger>
@@ -218,9 +235,11 @@ export default function ExpenseForm({
                       {category.name}
                     </SelectItem>
                   ))}
-                  <SelectItem value={"settings"} className="cursor-pointer">
-                    Agregar categoría variable
-                  </SelectItem>
+                  {!categories?.length && (
+                    <SelectItem value={"settings"} className="cursor-pointer">
+                      Agregar categoría variable
+                    </SelectItem>
+                  )}
                 </SelectContent>
               </Select>
             </div>

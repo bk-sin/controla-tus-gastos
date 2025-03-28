@@ -1,11 +1,11 @@
 "use client";
 
+import { CreditCard } from "@/components/dashboard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useUser } from "@/lib/hooks/use-user";
 import { useState } from "react";
-import { CreditCard } from "../dashboard";
 
 export const CreditCardForm = ({
   initialData,

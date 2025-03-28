@@ -1,6 +1,6 @@
+import { CreditCard } from "@/components/dashboard";
 import { Button } from "@/components/ui/button";
 import { CreditCard as CreditCardIcon, Pencil, Trash2 } from "lucide-react";
-import { CreditCard } from "../dashboard";
 
 export const CreditCardItem = ({
   card,
@@ -8,7 +8,7 @@ export const CreditCardItem = ({
   onDelete,
 }: {
   card: CreditCard;
-  onEdit: (category: CreditCard) => void;
+  onEdit: (card: CreditCard) => void;
   onDelete: (id: string) => void;
 }) => (
   <div

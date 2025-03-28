@@ -13,7 +13,8 @@ export type DbExpense = {
   description?: string;
   userId: string;
   isFixed: boolean;
-  expenseCategories: DbExpenseCategory;
+  categoryId: string;
+  category: DbExpenseCategory;
 };
 
 export type DbExpenseCategory = {

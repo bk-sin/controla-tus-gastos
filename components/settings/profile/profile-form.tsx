@@ -1,16 +1,16 @@
 import { DBCurrency } from "@/lib/supabase";
 import { useTheme } from "next-themes";
 import { useState } from "react";
-import { Button } from "../ui/button";
-import { Input } from "../ui/input";
-import { Label } from "../ui/label";
+import { Button } from "../../ui/button";
+import { Input } from "../../ui/input";
+import { Label } from "../../ui/label";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "../ui/select";
+} from "../../ui/select";
 import { Profile } from "./profile-tab";
 interface ProfileFormProps {
   onSubmit: (data: Omit<Profile, "email">) => void;

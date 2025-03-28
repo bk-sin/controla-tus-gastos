@@ -4,17 +4,19 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PlusCircle, Tag } from "lucide-react";
 import { useState } from "react";
-import type { ExpenseCategory } from "../dashboard";
+import type { ExpenseCategory } from "../../dashboard";
 import { CategoryForm } from "./category-form";
 import { CategoryItem } from "./category-item";
 
 export const CategoriesTab = ({
   categories,
-  onSave,
+  onCreate,
+  onUpdate,
   onDelete,
 }: {
   categories: ExpenseCategory[];
-  onSave: (data: any) => void;
+  onCreate: (data: Omit<ExpenseCategory, "id">) => void;
+  onUpdate: (data: ExpenseCategory) => void;
   onDelete: (id: string) => void;
 }) => {
   const [showForm, setShowForm] = useState(false);
@@ -22,9 +24,13 @@ export const CategoriesTab = ({
     ExpenseCategory | undefined
   >();
 
-  const handleSubmit = (data: any) => {
+  const handleSubmit = (data: ExpenseCategory) => {
     try {
-      onSave({ ...data, id: editingCategory?.id });
+      if (editingCategory?.id) {
+        onUpdate({ ...data });
+      } else {
+        onCreate({ ...data });
+      }
       setShowForm(false);
       setEditingCategory(undefined);
     } catch (error) {

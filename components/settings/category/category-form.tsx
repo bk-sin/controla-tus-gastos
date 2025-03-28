@@ -5,7 +5,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useState } from "react";
-import { ExpenseCategory } from "../dashboard";
+import { ExpenseCategory } from "../../dashboard";
 
 export const CategoryForm = ({
   initialData,
@@ -27,6 +27,7 @@ export const CategoryForm = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onSubmit({
+      id: initialData?.id,
       name: categoryName,
       isFixed: categoryType,
       color: categoryColor,

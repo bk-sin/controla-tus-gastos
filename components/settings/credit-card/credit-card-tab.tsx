@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CreditCard, PlusCircle } from "lucide-react";
 import { useState } from "react";
-import type { CreditCard as CreditCardType } from "../dashboard";
+import type { CreditCard as CreditCardType } from "../../dashboard";
 import { CreditCardForm } from "./credit-card-form";
 import { CreditCardItem } from "./credit-card-item";
 

@@ -1,7 +1,7 @@
+import { ExpenseCategory } from "@/components/dashboard";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Pencil, Trash2 } from "lucide-react";
-import type { ExpenseCategory } from "../dashboard";
 
 export const CategoryItem = ({
   category,

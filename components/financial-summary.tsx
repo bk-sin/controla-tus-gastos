@@ -2,24 +2,28 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useAtom } from "jotai";
 import { BarChart, PieChart } from "lucide-react";
-import type { CreditCardPayment, Expense, FixedExpense } from "./dashboard";
+import type { CreditCardPayment, Expense, ExpenseCategory } from "./dashboard";
+import { cardsAtom } from "./settings/settings-page";
 
 interface FinancialSummaryProps {
+  categories: ExpenseCategory[];
   expenses: Expense[];
   creditCardPayments: CreditCardPayment[];
-  fixedExpenses: FixedExpense[];
+  fixedExpenses: Expense[];
   income: number;
 }
 
 export default function FinancialSummary({
+  categories,
   expenses,
   creditCardPayments,
   fixedExpenses,
   income,
 }: FinancialSummaryProps) {
   // Calculate totals
-  const totalExpenses = expenses.reduce(
+  const totalExpenses = [...expenses, ...fixedExpenses].reduce(
     (sum, expense) => sum + expense.amount,
     0
   );
@@ -35,14 +39,18 @@ export default function FinancialSummary({
     totalExpenses + totalCreditCardPayments + totalFixedExpenses;
   const remaining = income - totalSpent;
 
-  // Group expenses by category
-  const expensesByCategory = expenses.reduce((acc, expense) => {
-    if (!acc[expense.category]) {
-      acc[expense.category] = 0;
-    }
-    acc[expense.category] += expense.amount;
-    return acc;
-  }, {} as Record<string, number>);
+  // Group expenses by category, including fixed expenses
+  const expensesByCategory = [...expenses, ...fixedExpenses].reduce(
+    (acc: Record<string, number>, expense) => {
+      const categoryKey = expense.category?.name || "Unknown";
+      if (!acc[categoryKey]) {
+        acc[categoryKey] = 0;
+      }
+      acc[categoryKey] += expense.amount;
+      return acc;
+    },
+    {}
+  );
 
   // Group credit card payments by card
   const paymentsByCard = creditCardPayments.reduce((acc, payment) => {
@@ -55,28 +63,14 @@ export default function FinancialSummary({
 
   // Group fixed expenses by type
   const expensesByType = fixedExpenses.reduce((acc, expense) => {
-    if (!acc[expense.category.name]) {
-      acc[expense.category.name] = 0;
+    if (!acc[expense.category?.name || "Unknown"]) {
+      acc[expense.category?.name ?? "Unknown"] = 0;
     }
-    acc[expense.category.name] += expense.amount;
+    acc[expense.category?.name ?? "Unknown"] += expense.amount;
     return acc;
   }, {} as Record<string, number>);
 
-  const getChartColor = (index: number) => {
-    const colors = [
-      "bg-blue-500", // Azul
-      "bg-green-500", // Verde
-      "bg-red-500", // Rojo
-      "bg-purple-500", // Púrpura
-      "bg-orange-500", // Naranja
-      "bg-yellow-500", // Amarillo
-      "bg-teal-500", // Verde azulado
-      "bg-indigo-500", // Índigo
-      "bg-pink-500", // Rosa
-      "bg-gray-500", // Gris
-    ];
-    return colors[index % colors.length];
-  };
+  const [cards] = useAtom(cardsAtom);
 
   return (
     <div className="space-y-6">
@@ -236,7 +230,7 @@ export default function FinancialSummary({
                   </div>
                   <div className="space-y-2">
                     {Object.entries(expensesByCategory).map(
-                      ([category, amount], index) => (
+                      ([category, amount]) => (
                         <div key={category} className="space-y-1">
                           <div className="flex items-center justify-between">
                             <span className="text-sm font-medium">
@@ -248,11 +242,14 @@ export default function FinancialSummary({
                           </div>
                           <div className="w-full bg-muted rounded-full h-2">
                             <div
-                              className={`${getChartColor(
-                                index
-                              )} h-2 rounded-full`}
+                              className={`h-2 rounded-full`}
                               style={{
                                 width: `${(amount / totalExpenses) * 100}%`,
+                                backgroundColor: categories?.length
+                                  ? categories.find(
+                                      (cat) => cat.name === category
+                                    )?.color
+                                  : undefined,
                               }}
                             ></div>
                           </div>
@@ -286,36 +283,38 @@ export default function FinancialSummary({
                     <BarChart className="h-16 w-16 text-secondary" />
                   </div>
                   <div className="space-y-2">
-                    {Object.entries(paymentsByCard).map(
-                      ([card, amount], index) => (
-                        <div key={card} className="space-y-1">
-                          <div className="flex items-center justify-between">
-                            <span className="text-sm font-medium">{card}</span>
-                            <span className="text-sm">
-                              ${amount.toLocaleString("es-AR")}
-                            </span>
-                          </div>
-                          <div className="w-full bg-muted rounded-full h-2">
-                            <div
-                              className={`${getChartColor(
-                                index + 3
-                              )} h-2 rounded-full`}
-                              style={{
-                                width: `${
-                                  (amount / totalCreditCardPayments) * 100
-                                }%`,
-                              }}
-                            ></div>
-                          </div>
-                          <p className="text-xs text-muted-foreground">
-                            {((amount / totalCreditCardPayments) * 100).toFixed(
-                              1
-                            )}
-                            % del total de tarjetas
-                          </p>
+                    {Object.entries(paymentsByCard).map(([card, amount]) => (
+                      <div key={card} className="space-y-1">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-medium">
+                            {cards.find((car) => car.id === card)?.name ||
+                              "Unknown Card"}
+                          </span>
+                          <span className="text-sm">
+                            ${amount.toLocaleString("es-AR")}
+                          </span>
                         </div>
-                      )
-                    )}
+                        <div className="w-full bg-muted rounded-full h-2">
+                          <div
+                            className={`h-2 rounded-full`}
+                            style={{
+                              width: `${
+                                (amount / totalCreditCardPayments) * 100
+                              }%`,
+                              backgroundColor: cards.find(
+                                (car) => car.id === card
+                              )?.color,
+                            }}
+                          ></div>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          {((amount / totalCreditCardPayments) * 100).toFixed(
+                            1
+                          )}
+                          % del total de tarjetas
+                        </p>
+                      </div>
+                    ))}
                   </div>
                 </div>
               )}
@@ -340,23 +339,28 @@ export default function FinancialSummary({
                   </div>
                   <div className="space-y-2">
                     {Object.entries(expensesByType).map(
-                      ([type, amount], index) => (
-                        <div key={type} className="space-y-1">
+                      ([category, amount]) => (
+                        <div key={category} className="space-y-1">
                           <div className="flex items-center justify-between">
-                            <span className="text-sm font-medium">{type}</span>
+                            <span className="text-sm font-medium">
+                              {category}
+                            </span>
                             <span className="text-sm">
                               ${amount.toLocaleString("es-AR")}
                             </span>
                           </div>
                           <div className="w-full bg-muted rounded-full h-2">
                             <div
-                              className={`${getChartColor(
-                                index + 6
-                              )} h-2 rounded-full`}
+                              className={` h-2 rounded-full`}
                               style={{
                                 width: `${
                                   (amount / totalFixedExpenses) * 100
                                 }%`,
+                                backgroundColor: categories?.length
+                                  ? categories.find(
+                                      (cat) => cat.name === category
+                                    )?.color
+                                  : undefined,
                               }}
                             ></div>
                           </div>

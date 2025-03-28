@@ -6,6 +6,25 @@ import { DbCreditCard } from "../supabase";
 export class CreditCardService {
   private supabase = createClientComponentClient<Database>();
 
+  async getCreditCardList(): Promise<CreditCard[]> {
+    const { data, error } = await this.supabase.from("creditCards").select("*");
+    if (error) {
+      console.error("Error fetching fixed expense categories:", error);
+      return [];
+    }
+
+    return data.map((creditCard: DbCreditCard) => ({
+      id: creditCard.id,
+      name: creditCard.name,
+      color: creditCard.color,
+      userId: creditCard.userId,
+      lastNumbers: creditCard?.lastNumbers,
+      limit: creditCard?.limit,
+      closingDay: creditCard?.closingDay,
+      dueDay: creditCard?.dueDay,
+    }));
+  }
+
   async addCreditCard(card: Omit<CreditCard, "id">): Promise<DbCreditCard> {
     const newCreditCard: Omit<CreditCard, "id"> = {
       color: card.color,

@@ -1,67 +1,77 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Pencil, Trash2, Save, X } from "lucide-react"
-import type { Expense } from "./dashboard"
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Pencil, Save, Trash2, X } from "lucide-react";
+import { useState } from "react";
+import type { Expense, ExpenseCategory } from "./dashboard";
 
 interface ExpenseTableProps {
-  expenses: Expense[]
-  onEditExpense: (expense: Expense) => void
-  onDeleteExpense: (id: string) => void
+  expenses: Expense[];
+  categories: ExpenseCategory[];
+  onEditExpense: (expense: Expense) => void;
+  onDeleteExpense: (id: string) => void;
 }
 
-export default function ExpenseTable({ expenses, onEditExpense, onDeleteExpense }: ExpenseTableProps) {
-  const [editingId, setEditingId] = useState<string | null>(null)
-  const [editedDescription, setEditedDescription] = useState("")
-  const [editedAmount, setEditedAmount] = useState("")
-  const [editedCategory, setEditedCategory] = useState("")
+export default function ExpenseTable({
+  expenses,
+  categories = [],
+  onEditExpense,
+  onDeleteExpense,
+}: ExpenseTableProps) {
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editedDescription, setEditedDescription] = useState("");
+  const [editedAmount, setEditedAmount] = useState("");
+  const [editedCategory, setEditedCategory] = useState("");
 
   const startEditing = (expense: Expense) => {
-    setEditingId(expense.id)
-    setEditedDescription(expense.description)
-    setEditedAmount(expense.amount.toString())
-    setEditedCategory(expense.category)
-  }
+    setEditingId(expense.id);
+    setEditedDescription(expense.description);
+    setEditedAmount(expense.amount.toString());
+    setEditedCategory(expense?.categoryId || "");
+  };
 
   const cancelEditing = () => {
-    setEditingId(null)
-  }
+    setEditingId(null);
+  };
 
   const saveEditing = (expense: Expense) => {
     const updatedExpense: Expense = {
       ...expense,
       description: editedDescription,
       amount: Number.parseFloat(editedAmount),
-      category: editedCategory,
-    }
-    onEditExpense(updatedExpense)
-    setEditingId(null)
-  }
-
-  const getCategoryLabel = (category: string) => {
-    const categories: Record<string, string> = {
-      alimentacion: "Alimentación",
-      transporte: "Transporte",
-      entretenimiento: "Entretenimiento",
-      salud: "Salud",
-      educacion: "Educación",
-      ropa: "Ropa",
-      otro: "Otro",
-    }
-    return categories[category] || category
-  }
+      categoryId: editedCategory,
+    };
+    onEditExpense(updatedExpense);
+    setEditingId(null);
+  };
 
   const formatDate = (dateString: string) => {
-    const date = new Date(dateString)
-    return date.toLocaleDateString("es-AR")
-  }
+    if (!dateString) return "";
+    const date = new Date(dateString);
+    return date.toLocaleDateString("es-AR");
+  };
 
-  const totalAmount = expenses.reduce((sum, expense) => sum + expense.amount, 0)
+  const totalAmount = expenses.reduce(
+    (sum, expense) => sum + expense.amount,
+    0
+  );
 
   return (
     <Card>
@@ -70,7 +80,9 @@ export default function ExpenseTable({ expenses, onEditExpense, onDeleteExpense 
       </CardHeader>
       <CardContent>
         {expenses.length === 0 ? (
-          <p className="text-center text-muted-foreground py-4">No hay gastos registrados</p>
+          <p className="text-center text-muted-foreground py-4">
+            No hay gastos registrados
+          </p>
         ) : (
           <div className="overflow-x-auto">
             <Table>
@@ -88,32 +100,39 @@ export default function ExpenseTable({ expenses, onEditExpense, onDeleteExpense 
                   <TableRow key={expense.id}>
                     <TableCell>
                       {editingId === expense.id ? (
-                        <Input value={editedDescription} onChange={(e) => setEditedDescription(e.target.value)} />
+                        <Input
+                          value={editedDescription}
+                          onChange={(e) => setEditedDescription(e.target.value)}
+                        />
                       ) : (
                         expense.description
                       )}
                     </TableCell>
                     <TableCell>
                       {editingId === expense.id ? (
-                        <Select value={editedCategory} onValueChange={setEditedCategory}>
+                        <Select
+                          value={editedCategory}
+                          onValueChange={setEditedCategory}
+                        >
                           <SelectTrigger>
                             <SelectValue placeholder="Categoría" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="alimentacion">Alimentación</SelectItem>
-                            <SelectItem value="transporte">Transporte</SelectItem>
-                            <SelectItem value="entretenimiento">Entretenimiento</SelectItem>
-                            <SelectItem value="salud">Salud</SelectItem>
-                            <SelectItem value="educacion">Educación</SelectItem>
-                            <SelectItem value="ropa">Ropa</SelectItem>
-                            <SelectItem value="otro">Otro</SelectItem>
+                            {categories.map((fixedCategory) => (
+                              <SelectItem
+                                value={fixedCategory.id}
+                                key={fixedCategory.id}
+                              >
+                                {fixedCategory.name}
+                              </SelectItem>
+                            ))}
                           </SelectContent>
                         </Select>
                       ) : (
-                        getCategoryLabel(expense.category)
+                        expense?.category?.name || ""
                       )}
                     </TableCell>
-                    <TableCell>{formatDate(expense.date)}</TableCell>
+                    <TableCell>{formatDate(expense?.date || "")}</TableCell>
                     <TableCell className="text-right">
                       {editingId === expense.id ? (
                         <Input
@@ -130,19 +149,35 @@ export default function ExpenseTable({ expenses, onEditExpense, onDeleteExpense 
                     <TableCell className="text-right">
                       {editingId === expense.id ? (
                         <div className="flex justify-end gap-2">
-                          <Button variant="ghost" size="icon" onClick={() => saveEditing(expense)}>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => saveEditing(expense)}
+                          >
                             <Save className="h-4 w-4" />
                           </Button>
-                          <Button variant="ghost" size="icon" onClick={cancelEditing}>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={cancelEditing}
+                          >
                             <X className="h-4 w-4" />
                           </Button>
                         </div>
                       ) : (
                         <div className="flex justify-end gap-2">
-                          <Button variant="ghost" size="icon" onClick={() => startEditing(expense)}>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => startEditing(expense)}
+                          >
                             <Pencil className="h-4 w-4" />
                           </Button>
-                          <Button variant="ghost" size="icon" onClick={() => onDeleteExpense(expense.id)}>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => onDeleteExpense(expense.id)}
+                          >
                             <Trash2 className="h-4 w-4" />
                           </Button>
                         </div>
@@ -154,7 +189,9 @@ export default function ExpenseTable({ expenses, onEditExpense, onDeleteExpense 
                   <TableCell colSpan={3} className="font-bold">
                     Total
                   </TableCell>
-                  <TableCell className="text-right font-bold">${totalAmount.toLocaleString("es-AR")}</TableCell>
+                  <TableCell className="text-right font-bold">
+                    ${totalAmount.toLocaleString("es-AR")}
+                  </TableCell>
                   <TableCell></TableCell>
                 </TableRow>
               </TableBody>
@@ -163,6 +200,5 @@ export default function ExpenseTable({ expenses, onEditExpense, onDeleteExpense 
         )}
       </CardContent>
     </Card>
-  )
+  );
 }
-

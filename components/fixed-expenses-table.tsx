@@ -20,17 +20,17 @@ import {
 } from "@/components/ui/table";
 import { Pencil, Save, Trash2, X } from "lucide-react";
 import { useState } from "react";
-import type { ExpenseCategory, FixedExpense } from "./dashboard";
+import type { Expense, ExpenseCategory } from "./dashboard";
 
 interface FixedExpensesTableProps {
-  expenses: FixedExpense[];
+  fixedExpenses: Expense[];
   fixedCategories: ExpenseCategory[];
-  onEditExpense: (expense: FixedExpense) => void;
+  onEditExpense: (expense: Expense) => void;
   onDeleteExpense: (id: string) => void;
 }
 
 export default function FixedExpensesTable({
-  expenses,
+  fixedExpenses,
   fixedCategories = [],
   onEditExpense,
   onDeleteExpense,
@@ -38,38 +38,31 @@ export default function FixedExpensesTable({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editedDescription, setEditedDescription] = useState("");
   const [editedAmount, setEditedAmount] = useState("");
-  const [editedType, setEditedType] = useState("");
-  const [editedCategory, setEditedCategory] = useState<ExpenseCategory | null>(
-    null
-  );
-  const startEditing = (expense: FixedExpense) => {
+  const [editedCategory, setEditedCategory] = useState<string>("");
+  const startEditing = (expense: Expense) => {
     setEditingId(expense.id);
     setEditedDescription(expense.description);
     setEditedAmount(expense.amount.toString());
-    setEditedType(expense.type);
+    setEditedCategory(expense?.categoryId || "");
   };
 
   const cancelEditing = () => {
     setEditingId(null);
   };
 
-  const saveEditing = (expense: FixedExpense) => {
-    const updatedExpense: FixedExpense = {
+  const saveEditing = (expense: Expense) => {
+    const updatedExpense: Expense = {
       ...expense,
       description: editedDescription,
       amount: Number.parseFloat(editedAmount),
-      type: editedType,
-      category: editedCategory || expense.category,
+      categoryId: editedCategory || expense.categoryId,
     };
     onEditExpense(updatedExpense);
     setEditingId(null);
   };
 
-  const handleSelectType = (type: string) => {
-    setEditedType(type);
-    setEditedCategory(
-      fixedCategories.find((fixedCategory) => fixedCategory.id === type) || null
-    );
+  const handleSelectType = (category: string) => {
+    setEditedCategory(category);
   };
 
   const formatDate = (dateString: string) => {
@@ -77,7 +70,7 @@ export default function FixedExpensesTable({
     return date.toLocaleDateString("es-AR");
   };
 
-  const totalAmount = expenses.reduce(
+  const totalAmount = fixedExpenses.reduce(
     (sum, expense) => sum + expense.amount,
     0
   );
@@ -88,7 +81,7 @@ export default function FixedExpensesTable({
         <CardTitle>Gastos Fijos</CardTitle>
       </CardHeader>
       <CardContent>
-        {expenses.length === 0 ? (
+        {fixedExpenses.length === 0 ? (
           <p className="text-center text-muted-foreground py-4">
             No hay gastos fijos registrados
           </p>
@@ -105,22 +98,22 @@ export default function FixedExpensesTable({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {expenses.map((expense) => (
-                  <TableRow key={expense.id}>
+                {fixedExpenses.map((fixedExpense) => (
+                  <TableRow key={fixedExpense.id}>
                     <TableCell>
-                      {editingId === expense.id ? (
+                      {editingId === fixedExpense.id ? (
                         <Input
                           value={editedDescription}
                           onChange={(e) => setEditedDescription(e.target.value)}
                         />
                       ) : (
-                        expense.description
+                        fixedExpense.description
                       )}
                     </TableCell>
                     <TableCell>
-                      {editingId === expense.id ? (
+                      {editingId === fixedExpense.id ? (
                         <Select
-                          value={editedType}
+                          value={editedCategory}
                           onValueChange={handleSelectType}
                         >
                           <SelectTrigger>
@@ -138,12 +131,12 @@ export default function FixedExpensesTable({
                           </SelectContent>
                         </Select>
                       ) : (
-                        expense.category.name
+                        fixedExpense.category?.name || ""
                       )}
                     </TableCell>
-                    <TableCell>{formatDate(expense.date)}</TableCell>
+                    <TableCell>{formatDate(fixedExpense.date || "")}</TableCell>
                     <TableCell className="text-right">
-                      {editingId === expense.id ? (
+                      {editingId === fixedExpense.id ? (
                         <Input
                           type="number"
                           value={editedAmount}
@@ -152,16 +145,16 @@ export default function FixedExpensesTable({
                           step="0.01"
                         />
                       ) : (
-                        `$${expense.amount.toLocaleString("es-AR")}`
+                        `$${fixedExpense.amount.toLocaleString("es-AR")}`
                       )}
                     </TableCell>
                     <TableCell className="text-right">
-                      {editingId === expense.id ? (
+                      {editingId === fixedExpense.id ? (
                         <div className="flex justify-end gap-2">
                           <Button
                             variant="ghost"
                             size="icon"
-                            onClick={() => saveEditing(expense)}
+                            onClick={() => saveEditing(fixedExpense)}
                           >
                             <Save className="h-4 w-4" />
                           </Button>
@@ -178,14 +171,14 @@ export default function FixedExpensesTable({
                           <Button
                             variant="ghost"
                             size="icon"
-                            onClick={() => startEditing(expense)}
+                            onClick={() => startEditing(fixedExpense)}
                           >
                             <Pencil className="h-4 w-4" />
                           </Button>
                           <Button
                             variant="ghost"
                             size="icon"
-                            onClick={() => onDeleteExpense(expense.id)}
+                            onClick={() => onDeleteExpense(fixedExpense.id)}
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
